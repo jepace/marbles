@@ -5,13 +5,8 @@
 #
 from random import randint
 
-# FIXME: If I'm in the magic circle, and I roll a 6, it is
-# theoretically possible to move back to where I am. However, the
-# check to see if the destination has one of my dudes in it will fail
-# because I am there (but I'd move to move).
-
 # Notes:
-#   ASCII doesn't have an cyan, so I'm using cyan instead. (or
+#   ASCII doesn't have an orange, so I'm using cyan instead. (or
 #   purple?)
 
 # GLOBALS
@@ -30,7 +25,6 @@ Home = {}       # Dict of each color's home status
 Marbles = {}    # Dict of each color's marble locations
 Players = []    # List of active players
 
-## What is space 0??
 # Marbles[color] : { location0, location1, location2, location3 }
 # Start[color] : space#
 Start = { 
@@ -41,7 +35,6 @@ Start = {
         "green": 56 ,
         "white": 70
         }
-
 
 #
 # Roll():
@@ -140,8 +133,6 @@ def Display():
 # send a guy back to base
 #
 def Bonk(space):
-    # FIXME: Problem removing the dead guy.  ListMoves still includes
-    # him. FIXED elsewhere (I think)
     if space == CENTER:
         deadGuy = CenterSpace
     else:
@@ -266,10 +257,6 @@ def Setup():
 #
 # Return a list of the valid player options with a die roll
 #
-
-
-# FIXME: Roll 1, dude in Home[0] .. don't offer option of leaving Home
-
 def GetMoves(color,die):
     assert die > 0 and die < 7
     assert color in Colors
@@ -425,10 +412,6 @@ def GetMoves(color,die):
 
         # "NORMAL" MOVEMENT
 
-        # XXX: For the end game, we'll want to make sure you don't
-        # have to keep going around if your roll doesn't take you into
-        # home.
-
         elif Board[(dude+die)%BOARDSIZE] != color: 
             selfPass = 0
             for i in range(1,die):
@@ -525,5 +508,3 @@ while not GameOver:
             if myRoll == 6:
                 print("%s rolled a 6! Take another turn." %pColor)
                 again=1
-
-
