@@ -249,7 +249,6 @@ def Setup():
         Players.append("cyan")
         Players.append("pink")
         Players.append("green")
-    print ("Players = ", Players)
     return NumPlayers
 
 #
@@ -271,7 +270,11 @@ def GetMoves(color,die):
         # If this marble is in Base, see if it can get out
         if dude == BASE:
             if (die == 1 or die == 6) and (Board[Start[color]]!=color) and (1==firstStart):
-                response.append([dude, Start[color]])
+                note = "[Start"
+                if Board[Start[color]]:
+                    note += " & Bonk " + Board[Start[color]]
+                note += "]"
+                response.append([dude, Start[color], note])
                 firstStart=0
                 continue
                 # print ("Can start a dude")
@@ -288,7 +291,11 @@ def GetMoves(color,die):
         # If my roll can take me to one past the MagicCircle, then I
         # can enter the Center.  dude+die-1 is equal to MagicCircle+1
         if dude+die-1 in MagicCircle and CenterSpace != color:
-            response.append([dude, CENTER])
+            note = "[Center"
+            if CenterSpace:
+                note += " & Bonk " + CenterSpace
+            note += "]"
+            response.append([dude, CENTER, note])
 
         # If I'm in the center and I got a one, I can roll out to any
         # magic circle space
@@ -296,9 +303,11 @@ def GetMoves(color,die):
             if die==1:
                 for i in MagicCircle:
                     if Board[i] != color:
-                        response.append([dude, i])
-            else:
-                print ("Stuck in the middle with you...")
+                        note = "[Magic Circle"
+                        if Board[i]:
+                            note += " & Bonk " + Board[i]
+                        note += "]"
+                        response.append([dude, i, note])
             continue
         assert dude != CENTER
 
@@ -331,13 +340,24 @@ def GetMoves(color,die):
                         # Handle case where I roll a 6 and want to do
                         # a full revolution
                         if dude != MoveToCheck:
-                            print ("You can't pass yourself!")
+                            #print ("You can't pass yourself!")
                             selfPass = 1
                             continue
 
                 if not selfPass:
                     # Add this to the list
-                    response.append([dude, out])
+                    note = ""
+                    if (out in MagicCircle) or (Board[out]):
+                        note += "["
+                    if out in MagicCircle:
+                        note += "Magic Circle"
+                    if out in MagicCircle and Board[out]:
+                        note += " & "
+                    if Board[out]:
+                        note += "Bonk " + Board[out]
+                    if out in MagicCircle or Board[out]:
+                        note += "]"
+                    response.append([dude, out, note])
                     #print ("Magic circle: %d -> %d" %(circleNum, out))
 
         # MOVEMENT INTO HOME
@@ -359,11 +379,13 @@ def GetMoves(color,die):
                         passMe = 1
                         continue
             if loc>=HOMESIZE and loc == dude+roll:
-                response.append([dude, loc])
+                if Board[loc]:
+                    note = "[Bonk " + Board[loc] + "]"
+                response.append([dude, loc, note])
 
             if not passMe and loc < 4:
                 #print ("Adding dude to Home[%d] = %d" %(loc,HOME+loc))
-                response.append([dude, HOME+loc])
+                response.append([dude, HOME+loc, "[Home]"])
                     
         # Special case, since blue start is 0 (modulo problem)
         # Between 78 and 83 are the potentials
@@ -380,16 +402,20 @@ def GetMoves(color,die):
                 if loc >= BOARDSIZE:
                     loc -= BOARDSIZE
                     #print ("Loc:", loc)
-                    if Home[color][loc] == color:
+                    if (loc >= HOMESIZE):    # Rolled too high and overshot Home
+                        passMe = 1  # Didn't really pass me, but close enough
+                    elif Home[color][loc] == color:
                         #print ("Can't pass your own guy")
                         passMe = 1
             # XXX: Not sure if this is right
             if (loc == dude+roll):
-                response.append([dude, loc])
+                if Board[loc]:
+                    note = "[Bonk " + Board[loc] + "]"
+                response.append([dude, loc, note])
 
             if not passMe and loc < 4:
                 #print ("Adding dude to Home[%s][%d]" %(color,loc))
-                response.append([dude, HOME+loc])
+                response.append([dude, HOME+loc, "Home"])
                     
         # Movement WITHIN Home
         elif dude >= HOME:
@@ -408,7 +434,7 @@ def GetMoves(color,die):
                     valid=0
                     continue
             if valid:
-                response.append([dude, dude+die])
+                response.append([dude, dude+die, "Home"])
 
         # "NORMAL" MOVEMENT
 
@@ -420,12 +446,27 @@ def GetMoves(color,die):
                     selfPass = 1
                     continue
             if not selfPass:
-                response.append([dude, (dude+die)%BOARDSIZE])
+                note = ""
+                if (dude+die)%BOARDSIZE in MagicCircle or Board[(dude+die)%BOARDSIZE]:
+                    note += "["
+                if (dude+die)%BOARDSIZE in MagicCircle:
+                    note += "Magic Circle"
+                if (dude+die)%BOARDSIZE in MagicCircle and Board[(dude+die)%BOARDSIZE]:
+                    note += " & "
+                if Board[(dude+die)%BOARDSIZE]:
+                    note += "Bonk " + Board[(dude+die)%BOARDSIZE]
+                if (dude+die)%BOARDSIZE in MagicCircle or Board[(dude+die)%BOARDSIZE]:
+                    note += "]"
+                response.append([dude, (dude+die)%BOARDSIZE, note])
 
     # Done!
     return response
 
-
+#
+# IsWinner(color)
+#
+# Determine if color has won.  Returns True/False
+#
 def IsWinner(color):
     win=1
     for i in range(0, HOMESIZE):
@@ -433,56 +474,51 @@ def IsWinner(color):
             win=0
             continue
     return bool(win)
+
 #
-# main
+# Main
 #
 GameOver = 0    # Is the game over
 
 numPlayers = Setup()
-#print ("Players = %d" %numPlayers)
-#print ("Players = ", Players)
 while not GameOver:
     for p in range(0,numPlayers):
         again=1 # Flag for when a player rolls a 6
         while again:
             again=0
             pColor = Players[p]
-            #print ("%s's turn" %pColor)
             myRoll = Roll()
-            #Display()
+
+            print ("\n%s rolled %d" %(pColor, myRoll))
 
             moves = GetMoves(pColor, myRoll)
-            #print ("Moves:",moves)
 
             if not moves:
-                print ("\n%s rolled %d" %(pColor, myRoll))
                 print ("No moves available. Skipping to next player.")
                 continue
 
             GetInput = 0
             while not GetInput:
-                print ("\n%s rolled %d" %(pColor, myRoll))
-
                 option=1    # Counter for the user input menu
                 for move in moves:
-                    strt, finish = move
+                    strt, finish, note = move
 
                     if finish >= HOME:
                         if strt >= HOME:
-                            print("\t[%d] Home[%d] -> Home[%d] #" %(option, strt-HOME, finish-HOME))
+                            print("\t[%d] Home[%d] -> Home[%d] %s" %(option, strt-HOME, finish-HOME, note))
                         else:
-                            print("\t[%d] %d -> Home[%d] #" %(option, strt, finish-HOME))
+                            print("\t[%d] %d -> Home[%d] %s" %(option, strt, finish-HOME, note))
                     elif strt == CENTER:
-                        print("\t[%d] Center -> %d *" %(option,finish))
+                        print("\t[%d] Center -> %d %s" %(option,finish,note))
                     elif strt == BASE:
-                        print ("\t[%d] Base -> Start " %option)
+                        print ("\t[%d] Base -> Start %s" %(option,note))
                     else:
                         if finish == CENTER:
-                            print ("\t[%d] %d to Center" %(option,strt))
+                            print ("\t[%d] %d to Center %s" %(option,strt,note))
                         elif finish in MagicCircle:
-                            print ("\t[%d] %d -> %d *" %(option, strt, finish))
+                            print ("\t[%d] %d -> %d %s" %(option, strt, finish,note))
                         else:
-                            print ("\t[%d] %d -> %d" %(option, strt, finish))
+                            print ("\t[%d] %d -> %d %s" %(option, strt, finish, note))
                     option+=1
                 try:
                     selection = int(input(pColor + ": Please select an option: "))
@@ -497,7 +533,7 @@ while not GameOver:
                     print ("Bad input")
                     GetInput = 0
 
-            src,dst = moves[selection-1]
+            src,dst,note = moves[selection-1]
             #print (pColor,opt, src,dst)
             Move(pColor, src, dst)
             Display()
