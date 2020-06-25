@@ -4,6 +4,7 @@
 # frustrating!
 #
 from random import randint
+import sys
 
 # Notes:
 #   ASCII doesn't have an orange, so I'm using cyan instead. (or
@@ -173,8 +174,8 @@ def Move(color, source, destination):
     if destination == CENTER:
         assert CenterSpace != color
         if CenterSpace:
-            Bonk(CENTER)
             print ("Bonk! %s hits %s!" %(color, CenterSpace))
+            Bonk(CENTER)
         CenterSpace = color
     elif destination >= HOME:
         assert Home[color][destination-HOME] != color
@@ -183,8 +184,8 @@ def Move(color, source, destination):
         assert Board[destination] != color
         # Deal with bonking if destination is not empty
         if Board[destination]:
-            Bonk(destination)
             print ("Bonk! %s hits %s!" %(color,Board[destination]))
+            Bonk(destination)
         Board[destination] = color
 
     Marbles[color].remove(source)
@@ -267,6 +268,8 @@ def GetMoves(color,die):
     # For each marble, figure out all possible moves
     firstStart=1    # Only want to add Start once
     for dude in Marbles[color]:
+        note =""    # Just in case, clear out any previous note
+
         # If this marble is in Base, see if it can get out
         if dude == BASE:
             if (die == 1 or die == 6) and (Board[Start[color]]!=color) and (1==firstStart):
@@ -327,7 +330,7 @@ def GetMoves(color,die):
             for i in range(0, die+1):
                 out = MagicCircle[(circleNum+i)%len(MagicCircle)] + (die-i)%BOARDSIZE
 
-                # Now verify that I didn't pass myself between dude
+                # Now verify that I didn't pass a teammate between dude
                 # and out
                 selfPass=0
                 for t in range(0,1+die-i):  # t is number of hops out of circle
@@ -346,14 +349,19 @@ def GetMoves(color,die):
 
                 if not selfPass:
                     # Add this to the list
+                    # Special processing: If the roll is a 6 in magic
+                    # circle, that isn't bonking because it is me.
+                    special=0
+                    if die == 6 and out == dude:
+                        special=1
                     note = ""
                     if (out in MagicCircle) or (Board[out]):
                         note += "["
                     if out in MagicCircle:
                         note += "Magic Circle"
-                    if out in MagicCircle and Board[out]:
+                    if out in MagicCircle and Board[out] and not special:
                         note += " & "
-                    if Board[out]:
+                    if Board[out] and not special:
                         note += "Bonk " + Board[out]
                     if out in MagicCircle or Board[out]:
                         note += "]"
@@ -361,13 +369,17 @@ def GetMoves(color,die):
                     #print ("Magic circle: %d -> %d" %(circleNum, out))
 
         # MOVEMENT INTO HOME
-        elif dude < Start[color] and (dude+die)%BOARDSIZE >= Start[color]: 
+        # NB: Add special cases for blue, with start space of 0,
+        # because of modulo problems.
+
+        elif (dude < Start[color] and (dude+die)%BOARDSIZE >= Start[color]) or \
+                (Start[color] == 0 and dude < Start[color]+BOARDSIZE and dude+die >= Start[color]+BOARDSIZE):
             #print ("This might be able to move into Home")
             #print (Home[color])
             passMe = 0
             loc = dude
             for roll in range(1,die+1):
-                loc = dude + roll
+                loc = (dude+roll)%BOARDSIZE
                 #print ("Loc raw:", loc)
                 if loc >= Start[color]:
                     loc -= Start[color]
@@ -387,37 +399,8 @@ def GetMoves(color,die):
                 #print ("Adding dude to Home[%d] = %d" %(loc,HOME+loc))
                 response.append([dude, HOME+loc, "[Home]"])
                     
-        # Special case, since blue start is 0 (modulo problem)
-        # Between 78 and 83 are the potentials
-        # XXX: Could this code be consolidated with above?
-        elif (color=="blue") and (dude >= (Start["white"]+8)) and (dude <= (BOARDSIZE-1)):
-            #print ("This might be able to move into Blue Home")
-            #print (color, dude, dude-BOARDSIZE, Start[color], dude+die, (dude+die)%BOARDSIZE)
-            #print (Home[color])
-            passMe = 0
-            loc = dude
-            for roll in range(1,die+1):
-                loc = dude + roll
-                #print ("Loc raw:", loc)
-                if loc >= BOARDSIZE:
-                    loc -= BOARDSIZE
-                    #print ("Loc:", loc)
-                    if (loc >= HOMESIZE):    # Rolled too high and overshot Home
-                        passMe = 1  # Didn't really pass me, but close enough
-                    elif Home[color][loc] == color:
-                        #print ("Can't pass your own guy")
-                        passMe = 1
-            # XXX: Not sure if this is right
-            if (loc == dude+roll):
-                if Board[loc]:
-                    note = "[Bonk " + Board[loc] + "]"
-                response.append([dude, loc, note])
-
-            if not passMe and loc < 4:
-                #print ("Adding dude to Home[%s][%d]" %(color,loc))
-                response.append([dude, HOME+loc, "Home"])
-                    
         # Movement WITHIN Home
+
         elif dude >= HOME:
             hm = Home[color]        # hm means Home[color]
             hp = dude-HOME        # hp means Home Position
@@ -434,7 +417,7 @@ def GetMoves(color,die):
                     valid=0
                     continue
             if valid:
-                response.append([dude, dude+die, "Home"])
+                response.append([dude, dude+die, "[Home]"])
 
         # "NORMAL" MOVEMENT
 
@@ -481,6 +464,7 @@ def IsWinner(color):
 GameOver = 0    # Is the game over
 
 numPlayers = Setup()
+Display()   # Show the initial game board
 while not GameOver:
     for p in range(0,numPlayers):
         again=1 # Flag for when a player rolls a 6
@@ -494,11 +478,19 @@ while not GameOver:
             moves = GetMoves(pColor, myRoll)
 
             if not moves:
-                print ("No moves available. Skipping to next player.")
+                print ("No moves available.")
                 continue
 
-            GetInput = 0
-            while not GetInput:
+            GotInput = 0
+
+            if pColor != Colors[0]:
+                if pColor == "yellow":
+                    selection = 1
+                else:
+                    selection = randint(1,len(moves))
+                GotInput = 1
+
+            while not GotInput:
                 option=1    # Counter for the user input menu
                 for move in moves:
                     strt, finish, note = move
@@ -522,25 +514,27 @@ while not GameOver:
                     option+=1
                 try:
                     selection = int(input(pColor + ": Please select an option: "))
-                    GetInput = 1
+                    GotInput = 1
                     if selection <1 or selection > len(moves):
                         print ("That's not an option. Try again.")
-                        GetInput = 0
+                        GotInput = 0
                 except ValueError:
                     print ("Bad input")
-                    GetInput = 0
+                    GotInput = 0
                 except TypeError:
                     print ("Bad input")
-                    GetInput = 0
+                    GotInput = 0
 
             src,dst,note = moves[selection-1]
-            #print (pColor,opt, src,dst)
             Move(pColor, src, dst)
             Display()
-            if IsWinner(pColor):
-                print ("You win!")
-                GameOver = 1
+            print ("%s moved [%d] -> [%d] %s" %(pColor, src, dst, note))
 
             if myRoll == 6:
                 print("%s rolled a 6! Take another turn." %pColor)
                 again=1
+
+            if IsWinner(pColor):
+                print ("%s wins!" %(pColor))
+                GameOver = 1
+                sys.exit(0)    # We're out of here!
