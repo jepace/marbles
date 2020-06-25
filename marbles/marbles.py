@@ -1,6 +1,9 @@
-# Aggrevation!
+# Marbles!
+# 
+# An implementation of the classic marble board game that can be very
+# frustrating!
+#
 from random import randint
-import sys
 
 # FIXME: If I'm in the magic circle, and I roll a 6, it is
 # theoretically possible to move back to where I am. However, the
