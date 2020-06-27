@@ -4,7 +4,6 @@
 # frustrating!
 #
 from random import randint
-import sys
 
 # Notes:
 #   ASCII doesn't have an orange, so I'm using Cyan instead. (or
