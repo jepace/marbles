@@ -347,14 +347,11 @@ def ValidMove(marble, destination, die, color):
             if testloc >= myStart:          # testloc is in the Home zone
                 testloc -= myStart          # How many spaces into Home?
                 if testloc >= HOMESIZE:     # Ran off the end of Home
-                    assert False
                     return False
                 elif Home[color][testloc]:  # somebody in the way
-                    assert False
                     return False
             else:                           # Still on the main board
                 if Board[testloc] == color: # Can't pass teammate
-                    assert False
                     return False
             # Checked all intermediate spaces, and destination space
 
