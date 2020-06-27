@@ -5,10 +5,6 @@
 #
 from random import randint
 
-# Notes:
-#   ASCII doesn't have an orange, so I'm using Cyan instead. (or
-#   purple?)
-
 # GLOBALS
 BOARDSIZE = 84  # Number of space around the main track
 CENTER=98       # "Location" of the center of death.
