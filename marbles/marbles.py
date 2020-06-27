@@ -27,8 +27,8 @@ Start = {
         "Blue": 0,
         "Red": 14,
         "Cyan": 28,
-        "Magenta": 42 ,
-        "Green": 56 ,
+        "Magenta": 42,
+        "Green": 56,
         "White": 70
         }
 
@@ -662,10 +662,16 @@ def Main():
 
                 GotInput = 0
 
+                # We are the robots!
                 if pColor != Colors[0]:
-                    if pColor == "Magenta":
+                    if pColor == Colors[1]:
+                        # Always take the first option
                         selection = 1
+                    elif pColor == Colors[-1]:
+                        # Always take the last option
+                        selection = len(moves)-1
                     else:
+                        # Take a random option
                         selection = randint(1,len(moves))
                     GotInput = 1
 
