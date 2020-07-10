@@ -4,6 +4,7 @@
 # frustrating!
 #
 from random import randint
+#import tkinter
 
 # GLOBALS
 BOARDSIZE = 84  # Number of space around the main track
@@ -12,7 +13,7 @@ BASE=99         # "Location" for base spots.  All are 99.
 HOME=100        # "Location" for home spots - 100, 101, 102, 103
 HOMESIZE=4      # How big is your home?
 
-Colors = [ "Blue", "Red", "Cyan", "Magenta", "Green", "White" ]
+Colors = [ "Blue", "Red", "Cyan", "Purple", "Green", "White" ]
 Board = ["" for x in range(0,BOARDSIZE)]
 CenterSpace = ""
 MagicCircle = [ 7, 21, 35, 49, 63, 77 ]     # Locations for the magic circle spaces
@@ -27,7 +28,7 @@ Start = {
         "Blue": 0,
         "Red": 14,
         "Cyan": 28,
-        "Magenta": 42,
+        "Purple": 42,
         "Green": 56,
         "White": 70
         }
@@ -55,7 +56,7 @@ def Display():
             "Blue": "\033[1;97;44m",
             "Red": "\033[1;97;41m",
             "Cyan": "\033[1;97;46m",
-            "Magenta": "\033[1;97;45m",
+            "Purple": "\033[1;97;45m",
             "Green": "\033[1;35;42m",
             "White": "\033[1;31;47m",
             }
@@ -65,7 +66,7 @@ def Display():
             "Blue": "\033[1;34;40m",
             "Red": "\033[1;31;40m",
             "Cyan": "\033[1;36;40m",
-            "Magenta": "\033[1;35;40m",
+            "Purple": "\033[1;35;40m",
             "Green": "\033[1;32;40m",
             "White": "\033[1;37;40m",
             }
@@ -73,53 +74,80 @@ def Display():
     # Reset the color to default
     creset="\033[m"
 
+    output = ["-" for x in range(0,BOARDSIZE)]
     for i in range(0,BOARDSIZE):
         space = Board[i]
         if space == "":
             # Use a * to indicate magic circle
             if i in MagicCircle:
-                print ("*", end="")
-                continue
+                #output[i] = "*"
+                #print ("*", end="")
+                output[i] = chr(0x00A4) # cool circle thing
             # Use a # to indicate start spaces
             elif i in Start.values():
                 # What's this? I need to get the color given the
                 # value.  So here's a bunch of casting black magic to
                 # do that.
                 thiscolor = list(Start.keys())[list(Start.values()).index(i)]
-                print (startColor[thiscolor]+"#"+creset, end="")
+                #output[i] = startColor[thiscolor]+"#"+creset
+                output[i] = startColor[thiscolor]+chr(0x00BB)+creset
+                output[i] = startColor[thiscolor]+chr(0x033F)+creset
+                #print (startColor[thiscolor]+"#"+creset, end="")
+            elif i % 10 == 0:
+                output[i] = str(i // 10)
             else:
-                print ("-", end="")
+                #output[i] = ("-")
+                output[i] = chr(0x00B7) # A nice dot
+                #print ("-", end="")
 
         # Occupied space
         else:
             # If you're on the magic circle, you get an upper case
             # letter
             if i in MagicCircle:
-                print (ccode[space]+space[0].upper()+creset, end="")
+                output[i] = ccode[space]+space[0].upper()+creset
+                #print (ccode[space]+space[0].upper()+creset, end="")
             else:
-                print (ccode[space]+space[0].lower()+creset, end="")
+                output[i] = ccode[space]+space[0].lower()+creset
+                #print (ccode[space]+space[0].lower()+creset, end="")
 
-    # Show the center of death
-    if CenterSpace:
-        print ("\t",ccode[CenterSpace]+CenterSpace[0].lower()+creset)
-    else:
-        print ("\t","-")
-
-    print()
+    for i in range(0,BOARDSIZE):
+        if i >=0 and i < 21:
+            if i == 0: print ("\t", end="")
+            print(output[i], end="")
+            if i == 20:
+                print()
+        elif i >= 21 and i < 42:
+            if i == 31:
+                if CenterSpace:
+                    cen = ccode[CenterSpace]+CenterSpace[0].upper()+creset
+                else:
+                    #cen = "-"
+                    #cen = chr(216)
+                    cen = chr(0x00A7)    # Hurricane
+                print("\t%s\t  %s\t    %s" %(output[104-i],cen,output[i]))
+            else:
+                print("\t"+output[104-i],"\t\t   ",output[i])
+        elif i >= 42 and i < 63:
+            if i == 42: print ("\t", end="")
+            print (output[104-i], end="")   # Print it backwards
+    print("\n")
 
     for p in Players:
-        if len(Base[p]):
-            print ("Base of %s:" %p, end="")
-            for b in Base[p]:
-                if b != "":
-                    print (ccode[b]+b[0].lower()+creset, end="")
-            print()
+        print ("%s\t" %p, end="")
+        print ("Base:\t", end="")
+        for b in Base[p]:
+            if b == "":
+                #print ("-", end="")
+                print (chr(0x00B7), end="")
+            else:
+                print (ccode[b]+b[0].lower()+creset, end="")
 
-    for p in Players:
-        print ("Home of %s:" %p, end="")
+        print ("\tHome:\t", end="")
         for h in Home[p]:
             if h == "":
-                print ("-", end="")
+                #print ("-", end="")
+                print (chr(0x00B7), end="")
             else:
                 print (ccode[h]+h[0].lower()+creset, end="")
         print()
@@ -135,14 +163,23 @@ def Setup():
     for c in Colors:
         Base[c] = [ c, c, c, c]
         Home[c] = [ "", "", "", ""]
-        Marbles[c] = [BASE, BASE, BASE, BASE ]      # Where are my marbles? BASE
+        # Where are my marbles? All your base are belong to us.
+        Marbles[c] = [BASE, BASE, BASE, BASE ]      
 
+    robotMode = 0
     Setup = 0       # Has the game been setup?
     while not Setup:
         try:
             Setup=1
             NumPlayers = int(input("How many players? "))
-            if NumPlayers < 2 or NumPlayers > 6:
+            if NumPlayers == 0:
+                print ("The only way to win is not to play.")
+                NumPlayers = -6
+                robotMode = 1
+            elif NumPlayers >= -6 and NumPlayers <= -2:
+                print ("Like tears in rain.")
+                robotMode = 1
+            elif NumPlayers < 2 or NumPlayers > 6:
                 print ("Please enter a number between 2 and 6.")
                 Setup=0
         except KeyError:
@@ -155,27 +192,27 @@ def Setup():
             print ("Please enter a number between 2 and 6.")
             Setup = 0
     print ("Preparing a %d player game." %NumPlayers)
-    if NumPlayers == 2:
+    if NumPlayers == 2 or NumPlayers == -2:
         Players.append("Blue")
-        Players.append("Magenta")
-    elif NumPlayers == 3:
+        Players.append("Purple")
+    elif NumPlayers == 3 or NumPlayers == -3:
         Players.append("Blue")
         Players.append("Cyan")
         Players.append("Green")
-    elif NumPlayers == 4:
+    elif NumPlayers == 4 or NumPlayers == -4:
         Players.append("Blue")
-        Players.append("Magenta")
+        Players.append("Purple")
         Players.append("White")
         Players.append("Cyan")
-    elif NumPlayers == 5:
+    elif NumPlayers == 5 or NumPlayers == -5:
         Players.append("Blue")
-        Players.append("Magenta")
+        Players.append("Purple")
         Players.append("White")
         Players.append("Cyan")
         Players.append("Red")
     else:
         Players.append("Blue")
-        Players.append("Magenta")
+        Players.append("Purple")
         Players.append("White")
         Players.append("Cyan")
         Players.append("Red")
@@ -219,14 +256,14 @@ def Move(color, source, destination):
 
         # The destination is that color's start
         destination = Start[color]
-        moveDesc += "Base -> "
+        moveDesc += "[Base] -> "
     elif source >= HOME:
         Home[color][source-HOME] = ""
-        moveDesc += "[Home[" + str(source-HOME+1) + "] -> "
+        moveDesc += "Home[" + str(source-HOME+1) + "] -> "
     else:
         assert Board[source] == color
         Board[source] = ""
-        moveDesc += "[" + str(source) + "] -> "
+        moveDesc += "" + str(source) + " -> "
 
     # Deal with possible destinations
     if destination == CENTER:
@@ -240,10 +277,10 @@ def Move(color, source, destination):
     elif destination >= HOME:
         assert Home[color][destination-HOME] != color
         Home[color][destination-HOME] = color
-        moveDesc += "[Home" + str(destination-HOME+1) + "]"
+        moveDesc += "Home[" + str(destination-HOME+1) + "]"
     else:   # Board destination is not the center or Home
         assert Board[destination] != color
-        moveDesc += "[" + str(destination) + "] "
+        moveDesc += "" + str(destination) + " "
         # Deal with bonking if destination is not empty
         if Board[destination]:
             moveDesc += "Bonk " + Board[destination] + "!"
@@ -255,12 +292,16 @@ def Move(color, source, destination):
     Marbles[color].append(destination)
     return moveDesc
 
-
 #
 # ValidMove (marble, destination, die)
 #
 # Check if the move from marble to destination via die is valid
 # Returns True / False
+#
+# This is pretty much a duplicate of GetMoves() but it serves as a
+# check because I was having problems. :)  I should probably remove
+# most of thie duplicate logic from GetMoves and have it here only.
+# But, you know, this is working.
 #
 def ValidMove(marble, destination, die, color):
 #    print ("[Entering] ValidMove(src=%d, dest=%d, die=%d, color=%s)" %(marble, destination, die, color))
@@ -393,7 +434,8 @@ def ValidMove(marble, destination, die, color):
 #
 # Used by .sorted to return lists in order
 def SortMoves(sub_li):
-    sub_li.sort(reverse=True,key = lambda x: x[0])
+    sub_li.sort(key = lambda x: x[3])
+    #sub_li.sort(reverse=True,key = lambda x: x[0])
     return sub_li
 
 #
@@ -425,7 +467,7 @@ def GetMoves(color,die):
                 note += "]"
                 if not ValidMove(dude, Start[color], die, color):
                     assert False
-                response.append([dude, Start[color], note])
+                response.append([dude, Start[color], note, BOARDSIZE])
                 firstStart=0
                 continue
             else:
@@ -451,7 +493,8 @@ def GetMoves(color,die):
                 note += "]"
                 if not ValidMove(dude, CENTER, die, color):
                     assert False
-                response.append([dude, CENTER, note])
+                distance = BOARDSIZE - 8
+                response.append([dude, CENTER, note, distance])
 
         # If I'm in the center and I got a one, I can roll out to any
         # magic circle space
@@ -465,7 +508,8 @@ def GetMoves(color,die):
                         note += "]"
                         if not ValidMove(dude, i, die, color):
                             assert False
-                        response.append([dude, i, note])
+                        distance = BOARDSIZE - (i - Start[color]) % BOARDSIZE
+                        response.append([dude, i, note, distance])
             continue
         assert dude != CENTER
 
@@ -495,7 +539,11 @@ def GetMoves(color,die):
                 for mc in range(1,i+1):
                     if Board[MagicCircle[(circleNum+mc)%len(MagicCircle)]] == color:
                         # Passed through teammate
-                        badMove = 1
+                        # 6 in magic circle means I can land on myself
+                        if mc == 6:
+                            pass
+                        else:
+                            badMove = 1
 
                 # Check regular spots after I left circle
                 for t in range(0,die-i+1):  # t is number of hops out of circle
@@ -534,7 +582,8 @@ def GetMoves(color,die):
                         note += "]"
                     if not ValidMove(dude, finalspot, die, color):
                         assert False
-                    response.append([dude, finalspot, note])
+                    distance = BOARDSIZE - (finalspot - Start[color]) % BOARDSIZE
+                    response.append([dude, finalspot, note, distance])
 
         # MOVEMENT INTO HOME
         # NB: Add special cases for Blue, with start space of 0,
@@ -567,7 +616,7 @@ def GetMoves(color,die):
                 if homeloc >= 0 and homeloc < HOMESIZE:
                     if not ValidMove(dude, HOME+homeloc, die, color):
                         assert False
-                    response.append([dude, HOME+homeloc, "[Home]"])
+                    response.append([dude, HOME+homeloc, "[Home]", 0])
 
                 # Still on the Board
                 elif loc < myStart:
@@ -575,7 +624,8 @@ def GetMoves(color,die):
                         note = "[Bonk " + Board[loc] + "]"
                     if not ValidMove(dude, loc, die, color):
                         assert False
-                    response.append([dude, loc, note])
+                    distance = BOARDSIZE - (loc - Start[color]) % BOARDSIZE
+                    response.append([dude, loc, note, distance])
                     
         # Movement WITHIN Home
 
@@ -593,7 +643,7 @@ def GetMoves(color,die):
             if valid:
                 if not ValidMove(dude, dude+die, die, color):
                     assert False
-                response.append([dude, dude+die, "[Home]"])
+                response.append([dude, dude+die, "[Home]", 0])
 
         # "NORMAL" MOVEMENT
 
@@ -617,7 +667,8 @@ def GetMoves(color,die):
                     note += "]"
                 if not ValidMove(dude, (dude+die)%BOARDSIZE, die, color):
                     assert False
-                response.append([dude, (dude+die)%BOARDSIZE, note])
+                distance = BOARDSIZE - ((dude+die)%BOARDSIZE - Start[color]) % BOARDSIZE
+                response.append([dude, (dude+die)%BOARDSIZE, note, distance])
 
     # Done!
 #    print ("[Leaving] GetMoves(color=%s die=%d) =" %(color,die),response)
@@ -633,18 +684,36 @@ def IsWinner(color):
     for i in range(0, HOMESIZE):
         if Home[color][i] != color:
             win=0
-            continue
+            break
     return bool(win)
+
+
+def TkSetup():
+    root = tkinter.Tk()
+    root.title("Marbles!")
+    canvas = tk.Canvas(root, width=200, height=200, borderwidth=0,
+            bg="black")
+    canvas.grid()
+    canvas.create_oval(100,100,200,200,fill="blue",outline="#DDD",width=4)
+    root.mainloop()
 
 #
 # Main
 #
 def Main():
     GameOver = 0    # Is the game over
+    turnNum = 0
+    robotMode = 0       # A human is needed
 
     numPlayers = Setup()
+    if numPlayers <= 0:
+        robotMode = 1
+        numPlayers *= -1
+
+#    TkSetup()
     Display()   # Show the initial game board
-    while not GameOver:
+    while not GameOver:     # Main game loop
+        turnNum += 1
         for p in range(0,numPlayers):
             again=1 # Flag for when a player rolls a 6
             while again:
@@ -661,24 +730,42 @@ def Main():
                     continue
 
                 GotInput = 0
+                selection = 0
 
-                # We are the robots!
-                if pColor != Colors[0]:
-                    if pColor == Colors[1]:
-                        # Always take the first option
+                # Red always goes for the kill
+                # White tried to be optimal, but sucked so now takes 1
+                # Cyan takes option 1
+                # Purple kills
+                # Green picks randomly from choices
+                # Blue is the player .. or she chooses 1
+
+                # Deckard is a replicant!
+                if robotMode and pColor == "Blue":
+                    selection = 1
+                    GotInput = 1
+
+                if pColor == "Red" or pColor == "Purple":      # Blood shall flow
+                    GotInput = 1
+                    for i in range(0,len(moves)):
+                        if "Bonk" in moves[i][2]:
+                            selection = i+1
+                            print ("Kill!", moves[i])
+                            break
+                    if not selection:
                         selection = 1
-                    elif pColor == Colors[-1]:
-                        # Always take the last option
-                        selection = len(moves)-1
-                    else:
-                        # Take a random option
-                        selection = randint(1,len(moves))
+                elif pColor == "Cyan" or pColor == "Purple" or pColor == "White":
+                    # Always take the first option
+                    selection = 1
+                    GotInput = 1
+                elif pColor == "Green":
+                    # Take a random option
+                    selection = randint(1,len(moves))
                     GotInput = 1
 
                 while not GotInput:
                     option=1    # Counter for the user input menu
                     for move in moves:
-                        strt, finish, note = move
+                        strt, finish, note, distance = move
 
                         if finish >= HOME:
                             if strt >= HOME:
@@ -715,7 +802,7 @@ def Main():
                         print ("Bad input")
                         GotInput = 0
 
-                src,dst,note = moves[selection-1]
+                src,dst,note,distance = moves[selection-1]
                 if not ValidMove(src,dst,myRoll,pColor):
                     print ("ERROR: ValidMove(%d, %d, %d, %s)" %(src,dst,myRoll,pColor))
                     return False
@@ -728,7 +815,7 @@ def Main():
                     again=1
 
                 if IsWinner(pColor):
-                    print ("%s wins!" %(pColor))
+                    print ("%s wins in %d turns!" %(pColor, turnNum))
                     GameOver = 1
                     return    # We're out of here!
 
